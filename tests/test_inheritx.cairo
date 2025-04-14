@@ -718,5 +718,63 @@ mod tests {
         assert(wallets.len() == 2, 'wallet count mismatch');
         assert(*wallets.at(0).wallet_type == type_personal, 'type1 mismatch');
         assert(*wallets.at(1).wallet_type == type_inheritance, 'type2 mismatch');
-    }
+
+
+#[test]
+fn test_add_beneficiary_to_plan_valid() {
+    let (dispatcher, contract_address) = setup();
+    // Use TryInto instead of contract_address_const
+    let owner: ContractAddress = 'owner'.try_into().unwrap();
+    let beneficiary1: ContractAddress = 'beneficiary1'.try_into().unwrap();
+    let beneficiary2: ContractAddress = 'beneficiary2'.try_into().unwrap();
+    
+    // First create a plan
+    start_cheat_caller_address(contract_address, owner);
+    let plan_id = dispatcher.create_inheritance_plan(
+        'Test Plan',
+        array![AssetAllocation { token: owner, amount: 1000, percentage: 100 }],
+        'Test Description',
+        array![owner], // Initially with just the owner as beneficiary
+    );
+    
+    // Add new beneficiaries
+    dispatcher.add_beneficiary_to_plan(
+        plan_id, 
+        array![beneficiary1, beneficiary2]
+    );
+    
+    // Verify beneficiaries were added
+    let plan_section = dispatcher.get_plan_section(plan_id, PlanSection::Beneficiaries);
+    assert(plan_section.beneficiaries.len() == 3, 'Beneficiary count mismatch');
+    
+    // Check specific beneficiaries - assuming SimpleBeneficiary structure
+    let mut found_beneficiary1 = false;
+    let mut found_beneficiary2 = false;
+    
+    // Loop through beneficiaries to verify both were added
+    let mut i = 0;
+    loop {
+        if i >= plan_section.beneficiaries.len() {
+            break;
+        }
+        
+        // Don't dereference, just compare directly
+        // Assuming SimpleBeneficiary is either directly a ContractAddress or can be compared with one
+        let beneficiary = plan_section.beneficiaries.at(i);
+        if beneficiary == @beneficiary1 {
+            found_beneficiary1 = true;
+        } else if beneficiary == @beneficiary2 {
+            found_beneficiary2 = true;
+        }
+        
+        i += 1;
+    };
+    
+    assert(found_beneficiary1, 'Beneficiary1 not found');
+    assert(found_beneficiary2, 'Beneficiary2 not found');
 }
+
+
+}
+
+
